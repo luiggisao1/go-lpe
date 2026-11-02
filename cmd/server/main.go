@@ -15,6 +15,7 @@ import (
 	"github.com/luiggisao/auto-golpe/internal/gemini"
 	apphttp "github.com/luiggisao/auto-golpe/internal/http"
 	"github.com/luiggisao/auto-golpe/internal/queue"
+	"github.com/luiggisao/auto-golpe/internal/slack"
 )
 
 func main() {
@@ -43,9 +44,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	slackClient := slack.NewClient(cfg.SlackBotToken)
+
 	workerMux := asynq.NewServeMux()
 	workerMux.HandleFunc(queue.TypeSlackProcessEvent, func(ctx context.Context, t *asynq.Task) error {
-		return queue.HandleSlackProcessEventTask(ctx, t, geminiClient)
+		return queue.HandleSlackProcessEventTask(ctx, t, geminiClient, slackClient)
 	})
 
 	go func() {

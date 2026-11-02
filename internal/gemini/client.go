@@ -22,10 +22,10 @@ func NewClient(ctx context.Context, apiKey string) (*Client, error) {
 	return &Client{client: client}, nil
 }
 
-func (c *Client) GenerateText(ctx context.Context, prompt string) (string, error) {
+func (c *Client) GenerateText(ctx context.Context, contents []*genai.Content) (string, error) {
 	resp, err := c.client.Models.GenerateContent(ctx,
 		"gemini-2.5-flash",
-		genai.Text(prompt),
+		contents,
 		nil,
 	)
 	if err != nil {

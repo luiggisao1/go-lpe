@@ -19,6 +19,7 @@ require (
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/redis/go-redis/v9 v9.14.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/slack-go/slack v0.33.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect

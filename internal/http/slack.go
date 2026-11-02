@@ -22,6 +22,9 @@ type SlackInnerEvent struct {
 	Text     string `json:"text"`
 	Channel  string `json:"channel"`
 	ThreadTS string `json:"thread_ts"`
+	TS       string `json:"ts"`
+	BotID    string `json:"bot_id"`
+	SubType  string `json:"subtype"`
 }
 
 type SlackEventPayload struct {
@@ -89,11 +92,22 @@ func (s *Server) handleSlackWebhook(w http.ResponseWriter, r *http.Request) {
 			"channel", payload.Event.Channel,
 			"text", payload.Event.Text,
 		)
+		if payload.Event.BotID != "" || payload.Event.SubType == "bot_message" {
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
+			return
+		}
+		if payload.Event.Type == "message" && payload.Event.ThreadTS == "" {
+			return
+		}
+		threadTS := payload.Event.ThreadTS
+		if threadTS == "" {
+			threadTS = payload.Event.TS
+		}
 		task, err := queue.NewSlackProcessEventTask(
 			payload.Event.Channel,
 			payload.Event.User,
 			payload.Event.Text,
-			payload.Event.ThreadTS,
+			threadTS,
 		)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})

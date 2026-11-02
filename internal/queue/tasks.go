@@ -7,6 +7,8 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/luiggisao/auto-golpe/internal/gemini"
+	"github.com/luiggisao/auto-golpe/internal/slack"
+	"google.golang.org/genai"
 )
 
 const TypeSlackProcessEvent = "slack:process_event"
@@ -32,7 +34,12 @@ func NewSlackProcessEventTask(channel, user, text, threadTS string) (*asynq.Task
 	return asynq.NewTask(TypeSlackProcessEvent, payloadBytes), nil
 }
 
-func HandleSlackProcessEventTask(ctx context.Context, t *asynq.Task, geminiClient *gemini.Client) error {
+func HandleSlackProcessEventTask(
+	ctx context.Context,
+	t *asynq.Task,
+	geminiClient *gemini.Client,
+	slackClient *slack.Client,
+) error {
 	var payload SlackEventTaskPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 		return err
@@ -44,12 +51,33 @@ func HandleSlackProcessEventTask(ctx context.Context, t *asynq.Task, geminiClien
 		"text", payload.Text,
 		"thread_ts", payload.ThreadTS,
 	)
+	var history []*genai.Content
+	if payload.ThreadTS != "" {
+		msgs, err := slackClient.GetThreadMessages(ctx, payload.Channel, payload.ThreadTS)
+		if err != nil {
+			return err
+		}
 
-	// Process the Slack event
-	response, err := geminiClient.GenerateText(ctx, payload.Text)
+		for _, msg := range msgs {
+			if msg.BotID != "" || msg.SubType == "bot_message" {
+				history = append(history, genai.NewContentFromText(msg.Text, genai.RoleModel))
+
+			} else {
+				if msg.Text != "" {
+					history = append(history, genai.NewContentFromText(msg.Text, genai.RoleUser))
+				}
+			}
+
+		}
+	} else {
+		history = append(history, genai.NewContentFromText(payload.Text, genai.RoleUser))
+	}
+
+	response, err := geminiClient.GenerateText(ctx, history)
 	if err != nil {
 		return err
 	}
+
 	slog.Info("gemini response generated", "response", response)
-	return nil
+	return slackClient.PostMessage(ctx, payload.Channel, payload.ThreadTS, response)
 }

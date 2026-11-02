@@ -12,6 +12,7 @@ type Config struct {
 	SlackSigningSecret string
 	RedisAddr          string
 	GoogleApiKey       string
+	SlackBotToken      string
 }
 
 func Load() *Config {
@@ -22,6 +23,7 @@ func Load() *Config {
 		SlackSigningSecret: getEnv("SLACK_SIGNING_SECRET", "test_signing_secret"),
 		RedisAddr:          getEnv("REDIS_ADDR", "localhost:6379"),
 		GoogleApiKey:       getEnv("GOOGLE_API_KEY", "test_api_key"),
+		SlackBotToken:      getEnv("SLACK_BOT_TOKEN", "test_bot_token"),
 	}
 }
 
