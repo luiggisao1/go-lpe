@@ -8,6 +8,7 @@ type Config struct {
 	Port               string
 	Environment        string
 	SlackSigningSecret string
+	RedisAddr          string
 }
 
 func Load() *Config {
@@ -15,6 +16,7 @@ func Load() *Config {
 		Port:               getEnv("PORT", "8080"),
 		Environment:        getEnv("ENV", "development"),
 		SlackSigningSecret: getEnv("SLACK_SIGNING_SECRET", "test_signing_secret"),
+		RedisAddr:          getEnv("REDIS_ADDR", "localhost:6379"),
 	}
 }
 

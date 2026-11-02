@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/luiggisao/auto-golpe/internal/config"
 )
 
 type Server struct {
-	cfg *config.Config
+	cfg         *config.Config
+	queueClient *asynq.Client
 }
 
 type HealthResponse struct {
@@ -27,9 +29,9 @@ type EchoResponse struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func NewRouter(cfg *config.Config) http.Handler {
+func NewRouter(cfg *config.Config, queueClient *asynq.Client) http.Handler {
 	mux := http.NewServeMux()
-	s := &Server{cfg: cfg}
+	s := &Server{cfg: cfg, queueClient: queueClient}
 
 	mux.HandleFunc("GET /health", handleHealth)
 	mux.HandleFunc("POST /api/v1/echo", handleEcho)

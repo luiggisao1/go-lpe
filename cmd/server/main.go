@@ -10,8 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/luiggisao/auto-golpe/internal/config"
 	apphttp "github.com/luiggisao/auto-golpe/internal/http"
+	"github.com/luiggisao/auto-golpe/internal/queue"
 )
 
 func main() {
@@ -21,9 +23,33 @@ func main() {
 	slog.SetDefault(logger)
 
 	cfg := config.Load()
+	queueClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.RedisAddr})
+	defer func(queueClient *asynq.Client) {
+		err := queueClient.Close()
+		if err != nil {
+			slog.Error("failed to close queue client", "error", err)
+		}
+	}(queueClient)
+
+	asynqServer := asynq.NewServer(
+		asynq.RedisClientOpt{Addr: cfg.RedisAddr},
+		asynq.Config{Concurrency: 5},
+	)
+
+	workerMux := asynq.NewServeMux()
+	workerMux.HandleFunc(queue.TypeSlackProcessEvent, queue.HandleSlackProcessEventTask)
+
+	go func() {
+		slog.Info("starting Asynq worker")
+		if err := asynqServer.Run(workerMux); err != nil {
+			slog.Error("asynq worker failed to start", "error", err)
+			os.Exit(1)
+		}
+	}()
+
 	slog.Info("configuration loaded", "env", cfg.Environment, "port", cfg.Port)
 
-	router := apphttp.NewRouter(cfg)
+	router := apphttp.NewRouter(cfg, queueClient)
 
 	server := &http.Server{
 		Addr:         ":" + cfg.Port,
@@ -55,4 +81,5 @@ func main() {
 	}
 
 	slog.Info("server exited cleanly")
+	asynqServer.Shutdown()
 }

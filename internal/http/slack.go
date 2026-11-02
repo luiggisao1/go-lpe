@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/luiggisao/auto-golpe/internal/queue"
 )
 
 type SlackInnerEvent struct {
@@ -87,7 +89,20 @@ func (s *Server) handleSlackWebhook(w http.ResponseWriter, r *http.Request) {
 			"channel", payload.Event.Channel,
 			"text", payload.Event.Text,
 		)
+		task, err := queue.NewSlackProcessEventTask(
+			payload.Event.Channel,
+			payload.Event.User,
+			payload.Event.Text,
+			payload.Event.ThreadTS,
+		)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if _, err := s.queueClient.Enqueue(task); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to enqueue task"})
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-		return
 	}
 }
