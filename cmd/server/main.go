@@ -12,6 +12,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/luiggisao/auto-golpe/internal/config"
+	"github.com/luiggisao/auto-golpe/internal/gemini"
 	apphttp "github.com/luiggisao/auto-golpe/internal/http"
 	"github.com/luiggisao/auto-golpe/internal/queue"
 )
@@ -36,8 +37,16 @@ func main() {
 		asynq.Config{Concurrency: 5},
 	)
 
+	geminiClient, err := gemini.NewClient(context.Background(), cfg.GoogleApiKey)
+	if err != nil {
+		slog.Error("failed to create gemini client", "error", err)
+		os.Exit(1)
+	}
+
 	workerMux := asynq.NewServeMux()
-	workerMux.HandleFunc(queue.TypeSlackProcessEvent, queue.HandleSlackProcessEventTask)
+	workerMux.HandleFunc(queue.TypeSlackProcessEvent, func(ctx context.Context, t *asynq.Task) error {
+		return queue.HandleSlackProcessEventTask(ctx, t, geminiClient)
+	})
 
 	go func() {
 		slog.Info("starting Asynq worker")

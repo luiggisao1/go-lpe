@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/hibiken/asynq"
+	"github.com/luiggisao/auto-golpe/internal/gemini"
 )
 
 const TypeSlackProcessEvent = "slack:process_event"
@@ -31,7 +32,7 @@ func NewSlackProcessEventTask(channel, user, text, threadTS string) (*asynq.Task
 	return asynq.NewTask(TypeSlackProcessEvent, payloadBytes), nil
 }
 
-func HandleSlackProcessEventTask(ctx context.Context, t *asynq.Task) error {
+func HandleSlackProcessEventTask(ctx context.Context, t *asynq.Task, geminiClient *gemini.Client) error {
 	var payload SlackEventTaskPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 		return err
@@ -45,5 +46,10 @@ func HandleSlackProcessEventTask(ctx context.Context, t *asynq.Task) error {
 	)
 
 	// Process the Slack event
+	response, err := geminiClient.GenerateText(ctx, payload.Text)
+	if err != nil {
+		return err
+	}
+	slog.Info("gemini response generated", "response", response)
 	return nil
 }

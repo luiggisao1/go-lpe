@@ -45,7 +45,7 @@ func NewRouter(cfg *config.Config, queueClient *asynq.Client) http.Handler {
 	return handler
 }
 
-func handleHealth(w http.ResponseWriter, r *http.Request) {
+func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	resp := HealthResponse{
 		Status:    "ok",
 		App:       "golpe",
@@ -80,7 +80,7 @@ func handleEcho(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-func handlePanic(w http.ResponseWriter, r *http.Request) {
+func handlePanic(_ http.ResponseWriter, _ *http.Request) {
 	panic("unexpected simulated disaster in handler")
 }
 
