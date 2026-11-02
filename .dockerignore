@@ -1,0 +1,13 @@
+.git
+.gitignore
+.idea
+.vscode
+.DS_Store
+*.md
+docs/
+bin/
+dist/
+*.test
+*.out
+.env
+.env.*
