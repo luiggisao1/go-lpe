@@ -2,20 +2,23 @@
 
 <p align="center">
   <strong>An Autonomous Software Engineering (SWE) Agent Harness in Go</strong><br>
-  High-throughput, sandboxed multi-agent orchestrator built with Go 1.22+, Redis Asynq, Google Gemini 2.5, and Docker.
+  High-throughput, sandboxed multi-agent orchestrator built with Go 1.22+, Redis Asynq, Google Gemini, and Docker.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go" alt="Go Version" />
+  <img src="https://img.shields.io/badge/Slack-Event%20API-4A154B?style=flat&logo=slack" alt="Slack" />
   <img src="https://img.shields.io/badge/Queue-Asynq%20%2B%20Redis-DC382D?style=flat&logo=redis" alt="Asynq" />
-  <img src="https://img.shields.io/badge/LLM-Google%20Gemini%202.5-4285F4?style=flat&logo=google" alt="Gemini" />
+  <img src="https://img.shields.io/badge/LLM-Google%20Gemini-4285F4?style=flat&logo=google" alt="Gemini" />
   <img src="https://img.shields.io/badge/Sandbox-Docker%20Engine-2496ED?style=flat&logo=docker" alt="Docker" />
   <img src="https://img.shields.io/badge/Status-Active%20WIP-orange?style=flat" alt="Status" />
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" />
 </p>
 
+> 💡 **TL;DR:** **Golpe** is a Slack-native autonomous Software Engineering (SWE) assistant and agent harness. It features non-blocking webhook ingestion, full multi-turn conversational memory with Google Gemini, asynchronous Redis task offloading via Asynq, and ephemeral Docker sandbox management—built in pure Go as an ultra-fast alternative to heavyweight Python agent stacks.
+
 > 🚧 **Project Status:** Active Work in Progress (`v0.1.0-alpha`).  
-> The core event ingestion pipeline, asynchronous task offloading, multi-turn Slack thread memory, and Gemini integration are operational. Isolated Docker execution sandboxing and hierarchical subagent delegation are currently under active development.
+> The core event ingestion pipeline, asynchronous task offloading, multi-turn Slack thread memory, Gemini integration, and the Docker Sandbox Engine are operational. The Tool Execution Harness and subagent delegation are currently under active development.
 
 ---
 
@@ -27,6 +30,40 @@ Built to replace traditional, heavyweight Python/Celery agent pipelines, Golpe l
 
 ---
 
+## 💡 Motivation: The Case for a Go-Native SWE Agent
+
+Most developer agents today (like early AutoGPT architectures, SWE-bench runners, or custom Celery orchestrators) are written in Python. While Python is great for exploratory scripting, it introduces major architectural friction when building a real-time, production SWE platform:
+
+1. **Slack Webhook Deadlines (`< 3,000ms`):** Slack requires webhook endpoints to acknowledge receipt within 3 seconds. Heavy Python frameworks under load frequently experience latency spikes, triggering Slack's retry mechanism and creating duplicate task runs or bot conversation loops. Golpe uses a native Go `net/http` router with cryptographic HMAC-SHA256 validation to acknowledge events in under a few milliseconds and offload processing to Redis.
+2. **The "Host Pollution" Security Trap:** Running AI-generated shell commands (`npm install`, `go build`, arbitrary bash scripts) directly on a developer machine or host server is dangerous. Golpe provisions isolated, resource-capped Docker sandboxes per session, guaranteeing that untrusted third-party code and dependencies never touch the host filesystem.
+3. **Credential & Secret Isolation:** Many agent setups inject the LLM API key directly into the container where third-party code runs. A malicious repository script could easily execute `printenv` and steal the keys. Golpe runs the agent orchestrator **outside** the sandbox; commands are injected via the Docker Engine API (`docker exec`), keeping API keys and Slack tokens 100% isolated.
+4. **Minimal Resource Footprint:** Python/Node-based agent containers easily consume 500MB–2GB of memory. Golpe compiles into a single static binary running inside a **15.9 MB** Alpine container with negligible idle CPU and RAM usage.
+
+---
+
+## 💬 Slack-Native Interaction Model
+
+Golpe meets software engineering teams right where they already collaborate:
+
+```text
+1. Trigger: A developer mentions the bot in a Slack channel:
+   "@bot can you explain how goroutines and channels differ from OS threads?"
+
+2. Non-Blocking Event Ingestion:
+   The server verifies the cryptographic HMAC-SHA256 signature, acknowledges Slack in milliseconds
+   to eliminate webhook timeouts, and enqueues the job into Redis via Asynq.
+
+3. Multi-Turn Thread Memory:
+   The background worker fetches the entire conversation history using `conversations.replies`,
+   aligning user and model roles so the agent retains full conversational continuity across follow-up questions.
+
+4. Contextual Delivery:
+   The agent generates technical guidance using Google Gemini and responds directly
+   inside the Slack thread without echo loops.
+```
+
+---
+
 ### 🚦 Current State: What Works Today
 
 This project is built iteratively following clean architecture principles. The following modules are live and tested:
@@ -34,7 +71,7 @@ This project is built iteratively following clean architecture principles. The f
 * **⚡ Non-Blocking Webhook Ingestion:** Fast standard library `net/http` router with cryptographic HMAC-SHA256 signature verification, immediately acknowledging Slack events and eliminating webhook timeouts.
 * **📬 Distributed Async Offloading:** Powered by `hibiken/asynq` + Redis, decoupling webhook receipt from long-running agent reasoning.
 * **🧵 Multi-Turn Thread Memory:** Full conversational continuity inside Slack threads using `conversations.replies`, formatting message history with `genai.RoleUser` and `genai.RoleModel` while preventing infinite bot echo loops.
-* **🤖 Google Gemini 2.5 Flash:** High-speed LLM reasoning integrated via the official `google.golang.org/genai` Go SDK.
+* **🤖 Google Gemini:** High-speed LLM reasoning integrated via the official `google.golang.org/genai` Go SDK.
 * **📦 Ultra-Lean Multi-Stage Container:** Production Docker build resulting in a static, self-contained **15.9 MB** Alpine image.
 
 ---
@@ -55,7 +92,7 @@ flowchart TD
     subgraph Orchestration ["2. Distributed Agent Harness"]
         Redis -->|Async Worker Task| Worker[Asynq Worker Pool]
         Worker --> ContextMgr[Context & Thread State Manager]
-        ContextMgr --> Supervisor[Supervisor / Orchestrator Agent\nGemini 2.5]
+        ContextMgr --> Supervisor[Supervisor / Orchestrator Agent\nGoogle Gemini]
     end
 
     subgraph MultiAgent ["3. Hierarchical Subagent Delegation"]
@@ -117,7 +154,6 @@ Complex software tasks are broken down using specialized subagents rather than a
 │   ├── notion/             # Notion API client for issue tracking and notes
 │   ├── queue/              # Asynq task definitions and background event handlers
 │   └── slack/              # Slack API client for messaging and thread history retrieval
-├── docs/                   # Architectural specs, schema drafts, and design records
 ├── Dockerfile              # Multi-stage static build (< 20 MB production image)
 ├── docker-compose.yml      # Local development environment (App + Redis + PostgreSQL)
 └── go.mod                  # Go module definition
@@ -134,8 +170,8 @@ Complex software tasks are broken down using specialized subagents rather than a
 | **03** | **Webhook Security** | ✅ Complete | Slack HMAC-SHA256 signature verification and payload validation. |
 | **04** | **Distributed Queue** | ✅ Complete | Asynq + Redis producer/consumer pipeline running concurrently. |
 | **05** | **Conversational Memory**| ✅ Complete | Slack thread context retrieval & multi-turn dialog with Gemini SDK. |
-| **06** | **Docker Sandbox Engine**| 🔄 In Progress | Ephemeral container provisioning and command execution (`docker exec`). |
-| **07** | **Tool Execution Harness**| ⏳ Planned | Native function calling for file reading, editing, and terminal commands. |
+| **06** | **Docker Sandbox Engine**| ✅ Complete | Ephemeral container provisioning, command execution (`docker exec`), and stream demultiplexing. |
+| **07** | **Tool Execution Harness**| 🔄 In Progress | Native function calling for file reading, editing, and terminal commands. |
 | **08** | **Subagent Delegation** | ⏳ Planned | Hierarchical Planner, Coder, and Reviewer subagent orchestration. |
 | **09** | **Issue Tracker Sync** | ⏳ Planned | Bidirectional sync with Notion databases and GitHub Pull Requests. |
 | **10** | **Vector Memory** | ⏳ Planned | Long-term memory and RAG using PostgreSQL + `pgvector`. |
