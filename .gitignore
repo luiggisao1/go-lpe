@@ -20,3 +20,13 @@ dist/
 
 # Documentation & drafts
 docs/
+
+# Local Agent Harness
+.agents/
+.gemini/
+GEMINI.md
+GEMINI.local.md
+tasks/
+memory/
+scripts/safety_guard.py
+scripts/tdd-check.sh
