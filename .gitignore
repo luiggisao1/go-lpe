@@ -19,4 +19,16 @@ dist/
 .DS_Store
 
 # Documentation & drafts
-docs/
+docs/*
+!docs/adr/
+docs/screenshots/
+
+# Local Agent Harness (Ghost Mode)
+.agents/
+.gemini/
+GEMINI.md
+GEMINI.local.md
+tasks/
+memory/
+scripts/safety_guard.py
+scripts/tdd-check.sh
