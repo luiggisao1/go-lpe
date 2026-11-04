@@ -41,6 +41,7 @@ func NewRouter(cfg *config.Config, queueClient *asynq.Client) http.Handler {
 	var handler http.Handler = mux
 	handler = Logging(handler)
 	handler = Recovery(handler)
+	handler = RequestID(handler)
 
 	return handler
 }
