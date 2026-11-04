@@ -60,18 +60,18 @@ func Logging(next http.Handler) http.Handler {
 
 		next.ServeHTTP(wrappedWriter, r)
 
-		attrs := []any{
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", wrappedWriter.statusCode,
-			"duration_ms", time.Since(start).Milliseconds(),
-			"remote_addr", r.RemoteAddr,
+		attrs := []slog.Attr{
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.Int("status", wrappedWriter.statusCode),
+			slog.Int64("duration_ms", time.Since(start).Milliseconds()),
+			slog.String("remote_addr", r.RemoteAddr),
 		}
 		if reqID := GetRequestID(r.Context()); reqID != "" {
-			attrs = append(attrs, "request_id", reqID)
+			attrs = append(attrs, slog.String("request_id", reqID))
 		}
 
-		slog.Info("http request", attrs...)
+		slog.LogAttrs(r.Context(), slog.LevelInfo, "http request", attrs...)
 	})
 }
 
@@ -79,15 +79,15 @@ func Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				attrs := []any{
-					"error", rec,
-					"path", r.URL.Path,
+				attrs := []slog.Attr{
+					slog.Any("error", rec),
+					slog.String("path", r.URL.Path),
 				}
 				if reqID := GetRequestID(r.Context()); reqID != "" {
-					attrs = append(attrs, "request_id", reqID)
+					attrs = append(attrs, slog.String("request_id", reqID))
 				}
 
-				slog.Error("recovered from panic in http handler", attrs...)
+				slog.LogAttrs(r.Context(), slog.LevelError, "recovered from panic in http handler", attrs...)
 
 				writeJSON(w, http.StatusInternalServerError, map[string]string{
 					"error": "internal server error",
