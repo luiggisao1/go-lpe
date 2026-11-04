@@ -19,9 +19,11 @@ dist/
 .DS_Store
 
 # Documentation & drafts
-docs/
+docs/*
+!docs/adr/
+docs/screenshots/
 
-# Local Agent Harness
+# Local Agent Harness (Ghost Mode)
 .agents/
 .gemini/
 GEMINI.md
